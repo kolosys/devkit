@@ -8,7 +8,7 @@ if ! command -v jq &>/dev/null; then
 fi
 
 input=$(cat)
-subagent_type=$(echo "$input" | jq -r '.subagent_type // .agent // empty')
+subagent_type=$(echo "$input" | jq -r '.agent_name // .subagent_type // .agent // empty')
 
 context="Kolosys DevKit subagent active."
 

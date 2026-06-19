@@ -58,9 +58,9 @@ Cursor plugin for open source **Go libraries** and **Next.js 16+** public sites.
 
 | Event | Behavior |
 |-------|----------|
-| `sessionStart` | Detects project stack, injects contextual guidance |
-| `beforeShellExecution` | Prompts before destructive git/rm commands |
-| `subagentStart` | Injects role-specific guidance per agent type |
+| `SessionStart` | Detects project stack, injects contextual guidance |
+| `PreToolUse` (Bash) | Blocks destructive git/rm commands |
+| `SubagentStart` | Injects role-specific guidance per agent type |
 
 ## Try Asking...
 
