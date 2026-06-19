@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [
+      {
+        "command": "hooks/session-start-context.sh"
+      }
+    ],
+    "beforeShellExecution": [
+      {
+        "command": "hooks/guard-destructive-shell.sh",
+        "matcher": "git push.*--force|git push.*-f\\b|git reset --hard|rm -rf /|rm -rf \\*|drop database|DROP TABLE"
+      }
+    ],
+    "subagentStart": [
+      {
+        "command": "hooks/subagent-context.sh"
+      }
+    ]
+  }
+}

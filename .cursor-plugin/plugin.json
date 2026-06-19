@@ -1,0 +1,36 @@
+{
+  "name": "kolosys-devkit",
+  "displayName": "Kolosys DevKit",
+  "version": "0.1.0",
+  "description": "Rules, skills, subagents, commands, and hooks for open source Go libraries and Next.js 16+ public sites — architecture, AI integration, performance, design, content, and SEO.",
+  "author": {
+    "name": "Kolosys",
+    "email": "dev@kolosys.com"
+  },
+  "homepage": "https://github.com/kolosys/kolosys-devkit",
+  "repository": "https://github.com/kolosys/kolosys-devkit",
+  "license": "MIT",
+  "keywords": [
+    "go",
+    "nextjs",
+    "typescript",
+    "tailwind",
+    "open-source",
+    "architecture",
+    "performance",
+    "seo",
+    "design-system",
+    "server-actions",
+    "ai",
+    "llm",
+    "rag",
+    "mcp",
+    "kolosys"
+  ],
+  "logo": "assets/logo.svg",
+  "rules": "rules",
+  "skills": "skills",
+  "agents": "agents",
+  "commands": "commands",
+  "hooks": "hooks/hooks.json"
+}

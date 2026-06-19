@@ -1,0 +1,211 @@
+---
+description: Next.js 16+ architecture, routing, caching, Server Actions, and project structure policy
+globs: "src/**/*.{ts,tsx}"
+alwaysApply: false
+---
+
+# Next.js 16+
+
+Consult `node_modules/next/dist/docs/` for API signatures. These rules override doc examples on **structure only** — take the API call, leave the file path.
+
+## Project Structure
+
+`src/` is the app root. Config and `public/` at repo root.
+
+```
+src/
+├── app/                          # App Router — route = feature module
+│   ├── api/                      # EXTERNAL ONLY (webhooks, OAuth, public API, cron)
+│   ├── (marketing)/              # route groups — org without URL impact
+│   ├── cart/                     # feature route — ALL its code lives HERE
+│   │   ├── page.tsx              # async Server Component
+│   │   ├── layout.tsx            # optional persistent shell
+│   │   ├── loading.tsx / error.tsx
+│   │   ├── client.tsx            # single client island (simple) OR
+│   │   ├── components/           # multiple route-scoped components (complex)
+│   │   ├── actions.ts            # 'use server' mutations + client-callable reads
+│   │   ├── queries.ts            # server-only data loaders (cache()-wrapped)
+│   │   ├── schemas.ts            # Zod schemas → z.infer for types
+│   │   ├── types.ts / hooks.ts / utils.ts
+│   │   └── opengraph-image.tsx
+│   ├── layout.tsx / page.tsx     # root route
+│   └── robots.ts / sitemap.ts
+├── design-system/                # feature-agnostic UI
+│   ├── primitives/               # Button, Text, Input — atomic, stateless
+│   ├── composites/               # Card, Dialog — built ONLY from primitives
+│   ├── utils/variants.ts         # all class-string logic
+│   ├── utils/tokens.ts           # design tokens
+│   └── index.ts                  # public barrel — only import surface
+├── lib/                          # UTILITIES + EXTERNAL CLIENTS ONLY
+│   ├── db/ / auth/ / env/        # external client wrappers
+│   └── format/ / http/           # pure utility modules
+└── proxy.ts                      # replaces middleware.ts (Node runtime)
+```
+
+### Hard Rules
+
+- **Route folders ARE feature modules.** actions, queries, schemas, components — all colocated. If you can't list one directory to see everything a route needs, the structure is wrong.
+- **`lib/` is JSX-free.** `.ts` only — no `.tsx`, no `"use client"`, no runtime React imports. External clients + pure utilities only. `import type` from React is the only exception.
+- **No domain logic in `lib/`.** No `lib/actions/`, `lib/queries/`, `lib/schemas/`, `lib/<feature>/`, `lib/components/`. Features live under their route.
+- **No `src/features/`, `src/components/`, `src/styles/`.** Routes are features; UI is `design-system/` or `app/<route>/components/`.
+
+### Dependency Direction
+
+```
+design-system  ←──  app/<route>/  ──→  lib/
+```
+
+`design-system/` has zero imports from `app/` or `lib/`. `lib/` has zero imports from `app/` or `design-system/`. Cross-route imports go through the owning route's barrel or hoist to a common parent.
+
+### Promotion Rules
+
+| Symptom | Action |
+|---------|--------|
+| Used by 1 route | Stays at `src/app/<route>/` |
+| Used by sibling routes | Hoist to common parent segment (`src/app/shop/actions.ts`) |
+| App-wide, no owner | Hoist to `src/app/actions.ts` — **never** `lib/` |
+| Pure utility used by ≥2 routes | Move to `src/lib/<category>/` |
+| Visual component, purely presentational | Promote to `design-system/composites/` |
+
+## `proxy.ts` (not `middleware.ts`)
+
+`middleware.ts` is deprecated in Next.js 16+. Use `src/proxy.ts` with Node.js runtime. Tighten the `matcher` to exclude `_next/static`, `_next/image`, static files, and metadata routes.
+
+## Server vs. Client Components
+
+Server Components are default. `"use client"` only for `useState`, `useEffect`, refs, event handlers, browser APIs.
+
+- **Route files are ALWAYS Server Components.** `page.tsx`, `layout.tsx`, `template.tsx`, `loading.tsx`, `not-found.tsx` — never `"use client"`. Extract interactivity to `app/<route>/components/`.
+- **`error.tsx` is the only exception** — must be a Client Component. Use `unstable_retry` (v16.2+) over `reset`.
+- Props crossing server→client must be JSON-serializable. Pass Server Action references for functions.
+- Push `"use client"` to the smallest leaf island.
+
+## Route Files
+
+| File | Type | Notes |
+|------|------|-------|
+| `page.tsx` | Server (async) | Never `"use client"` |
+| `layout.tsx` | Server (async) | Root renders `<html>`+`<body>`; others must not |
+| `template.tsx` | Server | Re-mounts per navigation — use only when needed |
+| `loading.tsx` | Server | Auto `<Suspense>` fallback |
+| `error.tsx` | **Client** | Only client route file |
+| `not-found.tsx` | Server | Triggered by `notFound()` |
+| `default.tsx` | Server | **Required for every `@slot` in v16** — build fails without it |
+| `route.ts` | Server | External-only Route Handler |
+
+## Routing Patterns
+
+| Pattern | Syntax | Effect |
+|---------|--------|--------|
+| Dynamic | `[slug]` | `params: Promise<{ slug: string }>` |
+| Catch-all | `[...s]` | `params: Promise<{ s: string[] }>` |
+| Optional catch-all | `[[...s]]` | Also matches parent path |
+| Route group | `(name)` | Org without URL impact |
+| Parallel route | `@slot` | Named slot in parent layout — needs `default.tsx` |
+| Intercepting | `(.)` `(..)` `(...)` | Modal patterns — counts route segments, not folders |
+| Private | `_folder` | Excluded from routing |
+
+## Async Dynamic APIs
+
+`params`, `searchParams`, `cookies()`, `headers()`, `draftMode()` are **Promises** — always `await`. Use `useRouter` from `next/navigation` (not `next/router`). Use `<Link>` for internal navigation.
+
+## Caching
+
+`fetch()` is uncached by default. Caching is opt-in.
+
+1. **`"use cache"` + `cacheLife`** (preferred v16) — file/component/function scoped. Enable with `cacheComponents: true` in `next.config.ts`.
+2. **`fetch` options** — `cache: 'force-cache'`, `next: { revalidate, tags }`, `cache: 'no-store'`.
+3. **React `cache()`** — request-scoped memoization for DB/ORM calls. Share loaders between `page.tsx` and `generateMetadata`.
+
+Profiles: `seconds` | `minutes` | `hours` | `days` | `weeks` | `max`
+
+Invalidation: `revalidateTag(tag, profile)` (SWR) | `updateTag` (read-your-writes, actions only) | `refresh()` (uncached data). Single-arg `revalidateTag` is deprecated.
+
+Don't: double-cache fetch in memory, mix `revalidate` segment config with `"use cache"`, forget cache directives after Next 14→16 upgrade.
+
+## Performance
+
+- Turbopack is default; prefer Turbopack-native plugins.
+- React Compiler (`reactCompiler: true`) for auto-memoization — opt-in.
+- Audit `"use client"` — every boundary adds JS.
+- Wrap slow data in `<Suspense>` for streaming.
+- `next/image`: use `preload` (not deprecated `priority`) for LCP; `remotePatterns` not `domains`.
+- `next/font` for zero-CLS self-hosted fonts.
+- Dynamic import heavy client widgets: `dynamic(() => import('./components/chart'), { ssr: false })`.
+
+## SEO & Metadata
+
+- Set `metadataBase` in root layout — mandatory for absolute OG/canonical URLs.
+- Define `title.template` once; pages set short titles.
+- Share loaders with `cache()` so `generateMetadata` and page query once.
+- Ship metadata as files: `opengraph-image.tsx`, `sitemap.ts`, `robots.ts`, `manifest.ts`, `public/llms.txt`.
+- `opengraph-image` ≤ 8MB, `twitter-image` ≤ 5MB — build fails otherwise.
+- Exclude metadata routes from `proxy.ts` matcher.
+- `params`/`id` in metadata files are Promises in v16.
+
+## Server Actions
+
+**Every internal UI server call is a Server Action.** `app/api/*` exists only for external consumers (webhooks, OAuth, public API, cron, health checks).
+
+| Caller | Use |
+|--------|-----|
+| Server Component read | Direct function call via `queries.ts` |
+| Client Component read/mutate | **Server Action** via `actions.ts` |
+| External webhook/API | `route.ts` in `app/api/` |
+
+If the only consumer of an endpoint is `fetch('/api/…')` from your own components — delete it and use a Server Action.
+
+### Action Rules
+
+- Colocate at `src/app/<route>/actions.ts`. Shared → common parent segment or `src/app/actions.ts`. **Never** `src/lib/`.
+- `"use server"` at file top.
+- Validate all input with Zod — Server Actions are a public network boundary.
+- Authenticate inside the action.
+- Revalidate after mutations: `updateTag` for read-your-writes, `revalidateTag(tag, profile)` for SWR.
+- Args and return values must be JSON-serializable.
+
+## Module Conventions
+
+| File | Location | Purpose |
+|------|----------|---------|
+| `proxy.ts` | `src/` | Request interception (Node). Replaces `middleware.ts` |
+| `instrumentation.ts` | `src/` | Server startup + `onRequestError` |
+| `instrumentation-client.ts` | `src/` | Pre-hydration setup (keep < 16ms) |
+| `mdx-components.tsx` | `src/` | Required for `@next/mdx` |
+
+## Forbidden Patterns
+
+- `middleware.ts` — use `proxy.ts`
+- `useRouter` from `next/router` — use `next/navigation`
+- `images.domains` — use `images.remotePatterns`
+- `next/legacy/image` — use `next/image`
+- Synchronous `params` / `searchParams` / `cookies()` / `headers()` — all async
+- `"use client"` on route files (except `error.tsx`)
+- Missing `default.tsx` in `@slot` folders
+- `<html>`/`<body>` in non-root layouts
+- Hand-written `<meta og:*>` / `<meta twitter:*>` — use metadata API / file conventions
+- `fetch('/api/…')` from own components — use Server Action
+- Internal Route Handlers whose only caller is your UI
+- Deep imports into `@/design-system/primitives/*` — use barrel
+- `src/lib/actions/`, `src/lib/queries/`, `src/lib/schemas/`, `src/lib/<feature>/`, `src/lib/components/`
+- Any `.tsx` under `src/lib/` or runtime React import in `lib/`
+- `src/features/` directory — routes ARE features
+- Cross-route deep imports without barrel or hoisting
+- Class components, `any` type, `experimental.ppr`/`dynamicIO`
+
+## Verification
+
+- [ ] `next build` (Turbopack) — zero TS errors
+- [ ] Linter reports zero errors
+- [ ] Every `fetch()` has explicit cache directive
+- [ ] Server Actions validate, authenticate, revalidate
+- [ ] No `app/api/*` called from own components
+- [ ] No sync `params`/`searchParams`/`cookies`/`headers`
+- [ ] No non-serializable props crossing server→client
+- [ ] `metadataBase` set; OG/canonical resolve to production URLs
+- [ ] `proxy.ts` (not `middleware.ts`) with tight matcher excluding metadata routes
+- [ ] All design-system imports use barrel `@/design-system`
+- [ ] Route code colocated — no feature scattered across folders
+- [ ] `lib/` is JSX-free, utilities + external clients only
+- [ ] Every `@slot` has `default.tsx`
+- [ ] `params`/`id` in metadata files are awaited

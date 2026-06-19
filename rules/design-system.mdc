@@ -1,0 +1,75 @@
+---
+description: Design system enforcement — reusable primitives, strict component layers, and Tailwind discipline
+globs: "**/*.tsx"
+alwaysApply: false
+---
+
+# Design System
+
+## Component Layers (one-way deps)
+
+```
+design-system/primitives → design-system/composites → app/<route>/{client,components}
+       (no deps)              (primitives only)        (design-system + lib + route imports)
+```
+
+- **Primitives** — atomic UI (`Button`, `Input`, `Heading`, `Text`, `IconButton`, `Chip`). Typed variant props. Zero domain knowledge. Own all visual logic including dark mode.
+- **Composites** — multi-primitive patterns (`Card`, `Dialog`, `EmptyState`). Structural props only. No data fetching, no Server Actions, no `lib/` imports.
+- **Route components** — `app/<route>/components/` or `client.tsx`. Wire domain data to design-system primitives. Import via barrel: `import { Button, Card } from '@/design-system'`.
+
+## Hard Rules
+
+1. **Max 4 inline Tailwind utilities** on consumer elements. More → extract a component.
+2. **No duplicate patterns.** If it exists, import it. Need it twice? Create it first.
+3. **No hardcoded colors** (`#fff`, `rgb(...)`, `bg-[#1a1a1a]`). Project tokens only.
+4. **No scattered `dark:` in consumer code.** Theme logic lives inside primitives/composites.
+5. **No raw HTML** (`<button>`, `<a>`, `<input>`) when a primitive exists.
+6. **Search before building.** Always check existing components first.
+7. **Typed variant props** — never consumer-side class overrides for visual changes.
+8. **Use `cn()` / `clsx()` / `twMerge()`** for conditional classes.
+
+## Where Things Live
+
+| What | Where |
+|------|-------|
+| Class-string logic | `design-system/utils/variants.ts` |
+| Design tokens | `design-system/utils/tokens.ts` |
+| CSS variables + Tailwind layers | `design-system/index.css` |
+| Public barrel | `design-system/index.ts` — only import surface from app code |
+
+Consumers use primitives (`<Heading>`, `<Button>`), never class builders directly. Exception: structural wrappers where the consumer owns the element (e.g. `cardShellClasses()` on a `<div>`, `buttonClasses()` on a `<Link>`).
+
+## Creating Components
+
+1. Can an existing primitive accept a new `variant`? → Extend it.
+2. Generic + reusable → `design-system/primitives/` or `composites/`.
+3. Route-specific → `src/app/<route>/components/`.
+4. Class logic → `variants.ts`. Component files stay minimal.
+5. Support light + dark + theme-switching inside the variant builder.
+
+## Theme & Dark Mode
+
+- Components handle dark mode internally. Consumers never apply `dark:`.
+- Theme switching (light/dark/system) in root layout + design-system — not per-page.
+- Glass-morphism, backdrop-blur, elevated surfaces → `variants.ts` with token-backed opacity.
+- Read `design-system/index.css` and tokens before inventing new pairings.
+
+## Tailwind Conventions
+
+- Prefer canonical v4 classes: `bg-linear-to-l` over `bg-gradient-to-l`.
+- Token syntax: `from-(--background)` over `from-[var(--background)]`.
+
+## Acceptable Inline Tailwind
+
+Only: layout spacing (`mt-6`, `gap-4`), page grid (`mx-auto max-w-5xl px-4`), one-off positional adjustments. If you're typing `flex items-center gap-2 rounded-...` — that's a component.
+
+## Import Rules
+
+- `@/design-system` barrel for all app imports. No deep paths.
+- `@/design-system/` must not import from `app/` or `lib/`.
+- Path aliases only for cross-layer (`@/design-system`, `@/lib`). No `../../../`.
+- Verify with `tsc --noEmit`.
+
+## Frozen Format
+
+When editing existing components, preserve the **mechanical format** (control type, DOM structure, interaction pattern) unless the user explicitly asks for a refactor. Allowed: data wiring, copy, logic within the same pattern, narrow class tweaks.

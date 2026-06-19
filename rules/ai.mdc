@@ -1,0 +1,100 @@
+---
+description: AI integration patterns — provider abstraction, streaming, cost discipline, security, and architecture for LLM features
+globs: "**/ai/**,**/lib/agents/**,**/lib/tools/**,**/embeddings/**,**/mcp/**,**/*agent*,**/*llm*,**/*embedding*"
+alwaysApply: false
+---
+
+# AI Integration
+
+## Architecture
+
+### Where AI Code Lives
+
+```
+src/
+├── lib/ai/                   # Provider config, shared AI utilities
+│   ├── provider.ts           # Provider abstraction / gateway config
+│   └── types.ts              # Shared AI types (messages, tool results)
+├── lib/agents/               # Agent definitions (ToolLoopAgent, custom agents)
+│   └── <name>-agent.ts       # Exports agent + InferAgentUIMessage type
+├── lib/tools/                # Tool definitions for agents
+│   └── <name>-tool.ts        # Exports tool + UIToolInvocation type
+├── lib/embeddings/           # Embedding pipeline, vector store clients
+├── app/<route>/actions.ts    # Server Actions that call AI (auth + validate first)
+└── app/api/chat/route.ts     # Chat endpoint (only if external consumers need it)
+```
+
+Go AI code lives alongside business logic in the relevant package. Shared LLM clients go in `internal/ai/` or a dedicated package.
+
+### Dependency Direction
+
+```
+lib/tools/ --> lib/agents/ --> app/<route>/actions.ts --> UI
+lib/ai/  ----^
+```
+
+- Tools have no dependencies on agents or routes.
+- Agents compose tools. Routes compose agents.
+- UI consumes agent types via `import type`.
+
+## Provider Abstraction
+
+- Wrap LLM calls behind an interface or provider layer — never scatter raw `openai.Chat()` or `anthropic.Messages.Create()` across business logic.
+- In TypeScript, prefer AI SDK provider strings (`"openai/gpt-5.4"`) or a gateway wrapper.
+- In Go, define a provider interface and inject the implementation.
+
+```go
+type LLMProvider interface {
+    Generate(ctx context.Context, req GenerateRequest) (GenerateResponse, error)
+    Stream(ctx context.Context, req GenerateRequest) (iter.Seq2[Chunk, error])
+}
+```
+
+## Streaming
+
+- Prefer streaming over batch for any user-facing AI response.
+- Use `streamText` / `agent.stream()` in TypeScript; stream via `iter.Seq2` or channels in Go.
+- Server Actions returning AI streams use `createUIMessageStreamResponse` or `toUIMessageStreamResponse`.
+- Never buffer an entire LLM response in memory before sending to the client.
+
+## Error Handling
+
+- Retry with exponential backoff on transient failures (429, 503).
+- Budget guards: estimate token count before calling; reject if over budget.
+- Graceful degradation: if provider is down, return a fallback response or queue for retry.
+- Wrap all LLM errors with context: `fmt.Errorf("generate summary: %w", err)`.
+
+## Cost Discipline
+
+- Use cheaper models for classification, routing, and extraction; expensive models for generation.
+- Cache embedding results for identical inputs.
+- Cache static/deterministic AI queries (`"use cache"` in Next.js, in-memory or Redis in Go).
+- Track token usage per feature/user — store `usage` from responses.
+- Set `maxOutputTokens` (or equivalent) on every call — never allow unbounded generation.
+- Tag AI calls for cost attribution when using a gateway.
+
+## Security
+
+- Never log prompt content or completions in production (PII, proprietary data risk).
+- Sanitize user input before including in prompts — prevent injection.
+- Validate structured LLM outputs with Zod (TypeScript) or struct validation (Go) before use.
+- API keys in environment variables only — never in code, never committed.
+- Rate-limit AI endpoints per user to prevent abuse.
+
+## Testing AI Features
+
+- Mock LLM responses in unit tests — never call real APIs in CI.
+- Snapshot test prompts to catch unintended prompt drift.
+- Build eval harnesses for quality-critical AI features.
+- Benchmark latency and token usage for cost-sensitive paths.
+- Test error paths: provider down, rate limited, malformed response, budget exceeded.
+
+## Forbidden Patterns
+
+- Raw API keys in source code (`OPENAI_API_KEY = "sk-..."`)
+- Unbounded token generation (no `maxOutputTokens` or equivalent)
+- Blocking LLM calls without timeout or context cancellation
+- `console.log` / `fmt.Println` of prompt content in production
+- Direct provider SDK imports when a gateway or abstraction layer exists
+- Storing embeddings without a TTL or invalidation strategy
+- Calling AI APIs from client-side code (always go through Server Actions or API routes)

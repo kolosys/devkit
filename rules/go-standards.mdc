@@ -1,0 +1,107 @@
+---
+description: Go library and application standards for high-performance, minimal-dependency open source projects
+globs: **/*.{go,mod,sum}
+alwaysApply: false
+---
+
+# Go Standards
+
+Apply when writing or reviewing Go libraries and services. Prioritize performance, zero allocations in hot paths, developer experience, and minimal dependencies.
+
+## API Design
+
+- Always accept `context.Context` as the first parameter for blocking operations.
+- Always respect context cancellation in `select` statements.
+- Always use the structural options pattern for configuration.
+- Always use `sync.RWMutex` for read-heavy concurrent access.
+- Always use atomics for counters and metrics.
+- Always use `any` instead of `interface{}`.
+- Always use `ID` not `Id` for identifier fields.
+- Always place the `ID` field first in structs.
+- Always use `sync.Once` for idempotent close operations.
+- Always use `sync.WaitGroup` to wait for in-flight work.
+- Always use generics for type-safe collections and utilities.
+- Always define sentinel errors for common failure cases.
+- Always wrap errors with context using `fmt.Errorf`.
+- Never block indefinitely; always support cancellation.
+- Return errors instead of panicking or throwing.
+
+## Package Layout
+
+```
+module/
+├── go.mod
+├── README.md
+├── doc.go                    # package-level godoc
+├── <type>.go                 # public API
+├── <type>_test.go            # tests in package_test
+├── internal/                 # private implementation
+│   └── ...
+└── examples/                 # optional runnable examples
+```
+
+- Use `package pkg_test` for test files in the same directory as public functionality.
+- Keep interfaces small with 1–3 methods.
+- Keep public APIs thread-safe and type-safe.
+- Keep behavior deterministic under load.
+
+## Performance
+
+- Keep hot paths under 200ns with zero allocations where possible.
+- Keep critical sections minimal.
+- Prefer stdlib or built-in solutions over external dependencies.
+- Use `fmt.Fprintf(...)` instead of `WriteString(fmt.Sprintf(...))` (QF1012).
+- Preallocate slices/maps when size is known.
+- Include benchmarks for performance-critical code.
+
+## Code Style
+
+Write code that reads fast and runs fast.
+
+- **Shorthand when idiomatic** — early returns, short declarations in narrow scope, generics for type-safe utilities, `any` over `interface{}`.
+- **Readable formatting** — short functions, one concept per file when practical, logical declaration order (types → constructors → methods).
+- **Comments only when necessary** — explain non-obvious invariants, performance trade-offs, and external constraints. Never narrate what the code already says.
+- **Godoc on exports only** — unexported helpers stay comment-free unless the logic is genuinely opaque.
+- **Always use shorthand syntax where possible** — ternary patterns via early return, range over index when index isn't needed, composite literals with explicit fields only when order is unclear.
+
+```go
+// ❌ Verbose
+var result []string
+for i := 0; i < len(items); i++ {
+    if items[i].Active {
+        result = append(result, items[i].Name)
+    }
+}
+
+// ✅ Concise
+names := make([]string, 0, len(items))
+for _, item := range items {
+    if !item.Active {
+        continue
+    }
+    names = append(names, item.Name)
+}
+```
+
+## Testing
+
+- Always test with the `-race` flag.
+- Always use table-driven tests.
+- Always test context cancellation paths.
+- Maintain minimum 90% test coverage for libraries.
+- Verify no lint errors and no build errors before completing.
+
+## Documentation
+
+- Keep documentation current for all exported types.
+- Keep inline comments minimal — reserve them for non-obvious business logic or complex sections.
+- Never place an inline comment on every line.
+
+## Verification Checklist
+
+- [ ] `go test -race ./...` passes
+- [ ] `go vet ./...` passes
+- [ ] Coverage meets project threshold
+- [ ] All blocking operations accept `context.Context`
+- [ ] No panics in library code paths
+- [ ] Dependencies are justified and minimal

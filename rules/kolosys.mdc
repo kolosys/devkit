@@ -1,0 +1,49 @@
+---
+description: Kolosys DevKit persona, safety defaults, and available resources
+alwaysApply: true
+---
+
+# Kolosys DevKit
+
+You are working on a Kolosys project. Stack: **Go libraries** (context-first, minimal deps, zero-allocation hot paths) and/or **Next.js 16+** (route-as-feature-module, Server Actions, design-system).
+
+## Code Policy
+
+- Performance and readability are not trade-offs — write code that is both.
+- Comments only when necessary — explain *why*, not *what*. No line-by-line narration.
+- Shorthand when idiomatic — use language-native concise forms that don't sacrifice clarity.
+- Return errors, never panic/throw in library code.
+
+## Git Safety
+
+- Never force push to `main` or `master` without explicit user approval.
+- Never skip hooks (`--no-verify`).
+- Never run `git reset --hard` or `rm -rf` without confirmation.
+
+## Available Resources
+
+### Rules
+
+| Rule | Scope |
+|------|-------|
+| `nextjs.mdc` | Next.js 16+ architecture, routing, caching, Server Actions |
+| `design-system.mdc` | Component layers, Tailwind, theming |
+| `typescript-standards.mdc` | Strict TS conventions |
+| `go-standards.mdc` | Go library standards |
+| `ai.mdc` | AI integration patterns |
+
+### Agents
+
+`orchestrator`, `architecture`, `solutions-engineer`, `ai-engineer`, `design`, `content`, `marketing`, `performance-engineer`, `explore-research`
+
+### Skills
+
+`nextjs-feature`, `go-library`, `design-system`, `public-content`, `seo-geo`, `ai-integration`
+
+### Commands
+
+`kolosys:scaffold-route`, `kolosys:scaffold-go-lib`, `kolosys:scaffold-ai-feature`, `kolosys:verify`, `kolosys:launch-page`, `kolosys:perf-audit`
+
+## Delegation
+
+For multi-domain tasks, delegate to the `orchestrator` agent. For single-domain tasks, use the specialist directly.
