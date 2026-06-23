@@ -1,0 +1,22 @@
+{
+  "name": "kolosys",
+  "owner": {
+    "name": "Kolosys",
+    "email": "dev@kolosys.com",
+    "url": "https://github.com/kolosys"
+  },
+  "metadata": {
+    "description": "Enterprise-grade skills, subagents, commands, and hooks for Go libraries and Next.js 16+ sites.",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "kolosys-devkit",
+      "source": ".",
+      "description": "Architecture, AI integration, performance, design, content, SEO, and security for Go and Next.js projects.",
+      "version": "0.1.0",
+      "category": "development",
+      "tags": ["go", "nextjs", "typescript", "architecture", "ai", "performance", "seo"]
+    }
+  ]
+}
