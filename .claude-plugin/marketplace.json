@@ -1,5 +1,5 @@
 {
-  "name": "kolosys",
+  "name": "kolosys-devkit",
   "owner": {
     "name": "Kolosys",
     "email": "dev@kolosys.com",
@@ -16,7 +16,15 @@
       "description": "Architecture, AI integration, performance, design, content, SEO, and security for Go and Next.js projects.",
       "version": "0.1.0",
       "category": "development",
-      "tags": ["go", "nextjs", "typescript", "architecture", "ai", "performance", "seo"]
+      "tags": [
+        "go",
+        "nextjs",
+        "typescript",
+        "architecture",
+        "ai",
+        "performance",
+        "seo"
+      ]
     }
   ]
 }
