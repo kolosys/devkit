@@ -1,6 +1,6 @@
 ---
-description: TypeScript strict-mode standards for Next.js and Node.js open source projects
-globs: **/*.{ts,tsx}
+description: TypeScript strict-mode standards — no `any`, Zod at boundaries, `import type`, inferred schema types, and performance-aware React/Next.js patterns. Apply when writing, reviewing, or refactoring `.ts` and `.tsx` files.
+globs: "**/*.ts,**/*.tsx"
 alwaysApply: false
 ---
 

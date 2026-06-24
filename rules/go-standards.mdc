@@ -1,6 +1,6 @@
 ---
-description: Go library and application standards for high-performance, minimal-dependency open source projects
-globs: **/*.{go,mod,sum}
+description: Go library and service standards — context-first APIs, zero-allocation hot paths, structural options, table-driven tests, and minimal dependencies. Apply when writing, reviewing, or scaffolding Go code.
+globs: "**/*.go,**/go.mod,**/go.sum"
 alwaysApply: false
 ---
 
